@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة المراقبة الذكية - V26 (دخول خاص)</title>
+    <style>
+        :root {
+            --bg: #05070a; --card: #0d1117; --border: #1f242d;
+            --green: #00e676; --red: #ff1744; --yellow: #ffca28; --blue: #00d4ff;
+            --text-neon: #00f2ff; 
+        }
+
+        /* --- شاشة الدخول --- */
+        #loginOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; justify-content:center; align-items:center; z-index:9999; }
+        .login-box { background:var(--card); padding:40px; border-radius:15px; text-align:center; border:2px solid var(--text-neon); box-shadow: 0 0 20px rgba(0, 242, 255, 0.2); }
+        .login-box h2 { color: white; margin-bottom: 20px; font-family: 'Segoe UI', sans-serif; }
+        .login-box input { padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:15px; width:250px; text-align:center; background: #000; color: white; font-size: 18px; outline: none; }
+        .login-box button { background:var(--text-neon); color:black; border:none; padding:12px 30px; border-radius:8px; cursor:pointer; font-weight:bold; font-size: 16px; }
+        #errorMsg { color: var(--red); display: none; margin-top: 15px; font-weight: bold; }
+
+        /* --- تنسيقات الجدول الأصلية V26 --- */
+        #mainContent { display: none; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; }
+        .container { max-width: 1600px; margin: auto; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; background: var(--card); padding: 12px 25px; border-radius: 12px; border: 1px solid var(--border); }
+        #liveClock { color: var(--yellow); font-size: 38px; font-weight: bold; font-family: 'Courier New', monospace; text-shadow: 0 0 15px rgba(255, 202, 40, 0.6); flex: 1; text-align: center; }
+        
+        .controls { display: flex; gap: 12px; align-items: center; }
+        .nav-arrow { color: var(--red); font-size: 24px; cursor: pointer; user-select: none; font-weight: bold; transition: 0.2s; }
+        .nav-arrow:hover { transform: scale(1.2); text-shadow: 0 0 10px var(--red); }
+
+        .control-item { background: #000; padding: 8px 15px; border-radius: 8px; border: 2px solid var(--green); display: flex; align-items: center; }
+        .control-item.month { border: 2px solid var(--blue); box-shadow: 0 0 10px rgba(0, 212, 255, 0.3); }
+        select, input[type="date"] { background: transparent; border: none; color: white; font-size: 15px; outline: none; cursor: pointer; font-weight: bold; }
+
+        .indicators-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+        
+        .card-header { 
+            color: var(--text-neon); 
+            text-align: center; 
+            font-size: 19px; 
+            font-weight: 900; 
+            margin-bottom: 12px; 
+            border-bottom: 1px solid #1f242d; 
+            padding-bottom: 8px;
+            text-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
+        }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { font-size: 11px; color: #8b949e; padding-bottom: 8px; }
+        td { text-align: center; padding: 5px 0; border-bottom: 1px solid #161b22; }
+        .tf-name { color: var(--blue); font-size: 13px; font-weight: bold; }
+
+        input[type="checkbox"] { transform: scale(1.4); cursor: pointer; appearance: none; width: 18px; height: 18px; border: 2px solid #30363d; border-radius: 4px; background: #000; position: relative; transition: 0.3s; }
+        input[type="checkbox"]:checked::after { content: '✔'; position: absolute; top: -3px; left: 2px; font-size: 13px; color: #000; font-weight: bold; }
+        input[type="checkbox"].up:checked { background: var(--green); border-color: var(--green); box-shadow: 0 0 12px var(--green); }
+        input[type="checkbox"].mid:checked { background: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 12px var(--yellow); }
+        input[type="checkbox"].down:checked { background: var(--red); border-color: var(--red); box-shadow: 0 0 12px var(--red); }
+
+        .bottom-section { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
+        
+        .notes-and-totals { display: flex; flex-direction: column; gap: 15px; }
+        .totals-bar { display: flex; gap: 10px; background: #0a0e14; padding: 10px; border-radius: 8px; border: 1px solid var(--border); justify-content: space-around; }
+        .total-item { font-weight: bold; font-size: 16px; padding: 5px 15px; border-radius: 5px; min-width: 100px; text-align: center; }
+        .total-up { color: var(--green); border: 1px solid var(--green); }
+        .total-mid { color: var(--yellow); border: 1px solid var(--yellow); }
+        .total-down { color: var(--red); border: 1px solid var(--red); }
+
+        textarea { 
+            background: #000; border: 1px solid #30363d; 
+            color: #a5f3fc; 
+            padding: 20px; border-radius: 8px; width: 100%; height: 180px; 
+            resize: none; outline: none; box-sizing: border-box; 
+            font-size: 26px; font-weight: bold; line-height: 1.4;
+        }
+
+        .manual-box { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid var(--border); text-align: center; }
+        
+        .stats-box { 
+            background: #000; padding: 15px; border-radius: 8px; 
+            border: 1px solid #30363d; display: flex; 
+            justify-content: space-between; align-items: center; margin-top: 10px; 
+        }
+        .stats-label { font-size: 18px; font-weight: bold; }
+        .stats-value { font-size: 32px; font-weight: 900; font-family: 'Courier New', monospace; }
+
+        .rating-container { background: #161b22; padding: 15px; border-radius: 10px; border: 1px dashed var(--yellow); text-align: center; margin-top: 10px; }
+        .rating-select { background: #000; color: var(--yellow); border: 1px solid var(--yellow); padding: 10px; border-radius: 5px; font-weight: bold; width: 90%; cursor: pointer; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+<!-- شاشة الدخول -->
+<div id="loginOverlay">
+    <div class="login-box">
+        <h2>دخول خاص - V26</h2>
+        <input type="password" id="passInput" placeholder="أدخل كلمة السر">
+        <br>
+        <button onclick="checkLogin()">دخول</button>
+        <p id="errorMsg">كلمة السر غير صحيحة!</p>
+    </div>
+</div>
+
+<div id="mainContent" class="container">
+    <div class="header">
+        <div style="color: var(--green); font-weight: bold; font-size: 18px;">لوحة المراقبة الذكية - V26</div>
+        <div id="liveClock">00:00:00</div>
+        <div class="controls">
+            <span class="nav-arrow" onclick="changeDate(-1)">❮</span>
+            <div class="control-item">
+                <input type="date" id="targetDate" onchange="syncMonthWithDate()">
+            </div>
+            <span class="nav-arrow" onclick="changeDate(1)">❯</span>
+            <div class="control-item month">
+                <select id="monthSelect" onchange="calculateStats()">
+                    <option value="01">يناير (01)</option><option value="02">فبراير (02)</option>
+                    <option value="03">مارس (03)</option><option value="04">أبريل (04)</option>
+                    <option value="05">مايو (05)</option><option value="06">يونيو (06)</option>
+                    <option value="07">يوليو (07)</option><option value="08">أغسطس (08)</option>
+                    <option value="09">سبتمبر (09)</option><option value="10">أكتوبر (10)</option>
+                    <option value="11">نوفمبر (11)</option><option value="12">ديسمبر (12)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="indicators-grid" id="mainGrid"></div>
+
+    <div class="bottom-section">
+        <div class="notes-and-totals">
+            <div style="color:var(--text-neon); font-weight:bold; font-size: 20px;">📝 ملاحظات يوم <span id="noteDate"></span>:</div>
+            <textarea id="dailyNotes" oninput="saveDayData()" placeholder="اكتب هنا..."></textarea>
+            
+            <div class="totals-bar">
+                <div class="total-item total-up">إجمالي الصاعد: <span id="sumUp">0</span></div>
+                <div class="total-item total-mid">إجمالي المتوسط: <span id="sumMid">0</span></div>
+                <div class="total-item total-down">إجمالي الهابط: <span id="sumDown">0</span></div>
+            </div>
+        </div>
+
+        <div class="profit-area">
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <div class="manual-box" style="flex:1; border-top: 4px solid var(--green);">
+                    <span style="color:var(--green); font-size: 16px; font-weight: bold;">💰 ربح اليوم (يدوي)</span>
+                    <input type="number" id="manualWin" style="background:transparent; border:none; color:white; font-size:40px; width:100%; text-align:center; outline:none; font-weight:900;" oninput="saveDayData()">
+                </div>
+                <div class="manual-box" style="flex:1; border-top: 4px solid var(--red);">
+                    <span style="color:var(--red); font-size: 16px; font-weight: bold;">📉 خسارة اليوم (يدوي)</span>
+                    <input type="number" id="manualLoss" style="background:transparent; border:none; color:white; font-size:40px; width:100%; text-align:center; outline:none; font-weight:900;" oninput="saveDayData()">
+                </div>
+            </div>
+
+            <div class="stats-box">
+                <span class="stats-label" style="color:var(--green)">الربح الأسبوعي:</span> 
+                <span id="weeklyProfit" class="stats-value" style="color:var(--green)">$0.00</span>
+            </div>
+            
+            <div class="stats-box">
+                <span class="stats-label" style="color:var(--yellow)">ربح الشهر المختار:</span> 
+                <span id="monthlyProfit" class="stats-value" style="color:var(--yellow)">$0.00</span>
+            </div>
+
+            <div class="rating-container">
+                <div style="margin-bottom: 8px; font-size: 16px; font-weight: bold;">التقييم اليومي (يدوي):</div>
+                <select id="manualRating" class="rating-select" onchange="saveDayData()">
+                    <option value="">-- اختر تقييمك --</option>
+                    <option value="⭐ أداء رابح بامتياز">⭐ أداء رابح بامتياز</option>
+                    <option value="✅ التزام تام بالخطة">✅ التزام تام بالخطة</option>
+                    <option value="⚖️ تداول متوازن">⚖️ تداول متوازن</option>
+                    <option value="⚠️ تداول عاطفي - حذر">⚠️ تداول عاطفي - حذر</option>
+                    <option value="❌ خروج عن الاستراتيجية">❌ خروج عن الاستراتيجية</option>
+                    <option value="📉 يوم خسارة - استراحة">📉 يوم خسارة - استراحة</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- إعدادات كلمة السر ---
+    const SECRET_PASSWORD = "1994"; // غير كلمة السر هنا
+
+    function checkLogin() {
+        const pass = document.getElementById('passInput').value;
+        if(pass === SECRET_PASSWORD) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            startApp();
+        } else {
+            document.getElementById('errorMsg').style.display = 'block';
+        }
+    }
+
+    // السماح بالدخول عبر زر Enter
+    document.getElementById('passInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') checkLogin();
+    });
+
+    // --- منطق الجدول الأصلي V26 ---
+    const indicators = [
+        "ADX - Average Directional Index ", 
+        "Market Profile", 
+        "Exponential Moving Average", 
+        "Bollinger Bands", 
+        "RSI", 
+        "Supertrend", 
+        "Volume Profile", 
+        "VWAP"
+    ];
+    const tfs = ["1W", "1D", "4H", "2H", "1H", "30M", "15M", "5M", "1M"];
+    let db;
+
+    function startApp() {
+        setInterval(() => { document.getElementById('liveClock').innerText = new Date().toLocaleTimeString('en-GB'); }, 1000);
+
+        const request = indexedDB.open("TradingArchiveV26_Secure", 1);
+        request.onupgradeneeded = e => { e.target.result.createObjectStore("archive", { keyPath: "date" }); };
+        request.onsuccess = e => { db = e.target.result; setup(); };
+    }
+
+    function setup() {
+        const grid = document.getElementById('mainGrid');
+        grid.innerHTML = "";
+        indicators.forEach((name, idx) => {
+            let html = `<div class="card"><div class="card-header">${name}</div><table><tr><th>الفريم</th><th style="color:var(--green)">صاعد</th><th style="color:var(--yellow)">متوسط</th><th style="color:var(--red)">هابط</th></tr>`;
+            tfs.forEach(tf => {
+                html += `<tr><td class="tf-name">${tf}</td>
+                    <td><input type="checkbox" class="chk up" data-id="${idx}-${tf}-up" onchange="saveDayData()"></td>
+                    <td><input type="checkbox" class="chk mid" data-id="${idx}-${tf}-mid" onchange="saveDayData()"></td>
+                    <td><input type="checkbox" class="chk down" data-id="${idx}-${tf}-down" onchange="saveDayData()"></td></tr>`;
+            });
+            grid.innerHTML += html + `</table></div>`;
+        });
+        document.getElementById('targetDate').valueAsDate = new Date();
+        syncMonthWithDate();
+    }
+
+    function changeDate(days) {
+        const currentDate = new Date(document.getElementById('targetDate').value);
+        currentDate.setDate(currentDate.getDate() + days);
+        document.getElementById('targetDate').valueAsDate = currentDate;
+        syncMonthWithDate();
+    }
+
+    function syncMonthWithDate() {
+        const dateVal = document.getElementById('targetDate').value;
+        if(dateVal) {
+            document.getElementById('monthSelect').value = dateVal.split('-')[1];
+            loadDayData();
+        }
+    }
+
+    function saveDayData() {
+        const date = document.getElementById('targetDate').value;
+        const entry = {
+            date: date,
+            checks: Array.from(document.querySelectorAll('.chk')).map(c => ({ id: c.dataset.id, val: c.checked })),
+            win: parseFloat(document.getElementById('manualWin').value) || 0,
+            loss: parseFloat(document.getElementById('manualLoss').value) || 0,
+            notes: document.getElementById('dailyNotes').value,
+            rating: document.getElementById('manualRating').value
+        };
+        db.transaction("archive", "readwrite").objectStore("archive").put(entry);
+        updateLiveTotals();
+        calculateStats();
+    }
+
+    function loadDayData() {
+        const date = document.getElementById('targetDate').value;
+        document.getElementById('noteDate').innerText = date;
+        const req = db.transaction("archive", "readonly").objectStore("archive").get(date);
+        req.onsuccess = () => {
+            const d = req.result;
+            const chks = document.querySelectorAll('.chk');
+            if (d) {
+                chks.forEach(c => { const s = d.checks.find(x => x.id === c.dataset.id); c.checked = s ? s.val : false; });
+                document.getElementById('manualWin').value = d.win || "";
+                document.getElementById('manualLoss').value = d.loss || "";
+                document.getElementById('dailyNotes').value = d.notes || "";
+                document.getElementById('manualRating').value = d.rating || "";
+            } else {
+                chks.forEach(c => c.checked = false);
+                document.getElementById('manualWin').value = ""; document.getElementById('manualLoss').value = ""; 
+                document.getElementById('dailyNotes').value = ""; document.getElementById('manualRating').value = "";
+            }
+            updateLiveTotals();
+            calculateStats();
+        };
+    }
+
+    function updateLiveTotals() {
+        document.getElementById('sumUp').innerText = document.querySelectorAll('.chk.up:checked').length;
+        document.getElementById('sumMid').innerText = document.querySelectorAll('.chk.mid:checked').length;
+        document.getElementById('sumDown').innerText = document.querySelectorAll('.chk.down:checked').length;
+    }
+
+    function calculateStats() {
+        const selectedMonth = document.getElementById('monthSelect').value;
+        const targetDate = new Date(document.getElementById('targetDate').value);
+        const req = db.transaction("archive", "readonly").objectStore("archive").getAll();
+        req.onsuccess = () => {
+            const all = req.result;
+            let mTotal = 0, wTotal = 0;
+            const weekLimit = new Date(targetDate);
+            weekLimit.setDate(weekLimit.getDate() - 7);
+            all.forEach(item => {
+                const itemDate = new Date(item.date);
+                const dayProfit = (item.win || 0) - (item.loss || 0);
+                if (item.date.split('-')[1] === selectedMonth) mTotal += dayProfit;
+                if (itemDate <= targetDate && itemDate >= weekLimit) wTotal += dayProfit;
+            });
+            document.getElementById('monthlyProfit').innerText = "$" + mTotal.toFixed(2);
+            document.getElementById('weeklyProfit').innerText = "$" + wTotal.toFixed(2);
+        };
+    }
+</script>
+</body>
+</html>
